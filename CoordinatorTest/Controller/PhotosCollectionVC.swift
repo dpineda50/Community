@@ -1,4 +1,4 @@
-//
+ //
 //  PhotosCollectionVC.swift
 //  CoordinatorTest
 //
@@ -12,32 +12,22 @@ import Firebase
 private let reuseIdentifier = "PhotoCell"
 
 extension PhotoCell {
-    func configure(with cell: Photo) {
-        self.label.text = cell.url.absoluteString
-        if cell.image != nil {
-            self.imageView.image = cell.image
-        }
-    }
+    
 }
 
 class PhotosCollectionVC: UICollectionViewController{
     
-    var photos = [Photo]() {
-        didSet {
-            collectionView?.reloadData()
-            DispatchQueue.global().async {
-                [weak self] in
-                self?.downloadPhotos()
-            }
-        }
-    }
-    
+    let store = DataStore.shared
     
     lazy var photoCellSize: CGSize = {
         return CGSize(width: view.bounds.width, height: view.bounds.height * 0.2)
     }()
     
     var album: DocumentSnapshot!
+    
+    var albumPath: String {
+        return "albums/\(album.documentID)"
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -48,44 +38,14 @@ class PhotosCollectionVC: UICollectionViewController{
         // Register cell classes
         let photoCellNib = UINib(nibName: "PhotoCell", bundle: Bundle.main)
         self.collectionView!.register(photoCellNib, forCellWithReuseIdentifier: reuseIdentifier)
+ 
         title = album.data()?["name"] as? String
 
         // Do any additional setup after loading the view.
-        installsStandardGestureForInteractiveMovement = true
         
-        loadImages()
-    }
-    
-    private func downloadPhotos() {
-        photos.forEach { (photo) in
-            if photo.image == nil {
-                photo.downloadImage()
-            }
-        }
-    }
-    
-    private func loadImages() {
-        let path = "albums/\(album.documentID)"
-        Firestore.firestore().document(path).getDocument { [weak self]
-            (snap, error) in
-            guard let strongSelf = self else { return }
-            if let error = error {
-                print("Error downloading images \(error.localizedDescription)")
-            }
-            guard let snap = snap else { print("This document does not exist"); return }
-            
-            if let data = snap.data() {
-                if let urls = data["photos"] as? [String] {
-                    print("we in here")
-                    let actualURLS = urls.compactMap { URL(string: $0) }
-                    strongSelf.photos = actualURLS.map{ Photo(url: $0) }
-                }
-            } else {
-                print("could not do it ")
-            }
-            
+        store.getImages(at: albumPath) {
             DispatchQueue.main.async {
-                strongSelf.collectionView?.reloadData()
+                self.collectionView?.reloadSections(IndexSet(integer: 0))
             }
         }
     }
@@ -110,53 +70,34 @@ class PhotosCollectionVC: UICollectionViewController{
 
 
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return photos.count
+        return store.photos.count
     }
 
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        print("collectionView.cellForItemAt: \(indexPath)")
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! PhotoCell
-    
-        cell.imageView.image = nil
         
-        // Configure the cell
-        let photo = photos[indexPath.row]
+        // load photo model from DataStore
+        let photo = store.photos[indexPath.row]
         
-        if photo.image == nil {
-            DispatchQueue.global().async {
-                photo.downloadImage { (image) in
-                    DispatchQueue.main.async { [weak self] in
-                        self?.collectionView?.reloadItems(at: [indexPath])
-                    }
-                }
-            }
-        } else {
-            cell.imageView.image = photo.image
-        }
+        // let view determine how to setup content
+        cell.displayContent(name: photo.url.absoluteString, image: photo.image)
         
-        cell.configure(with: photo)
         return cell
     }
     
     override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
         print("willDisplayCell:\(indexPath)")
-        
-        if let cell = cell as? PhotoCell {
-            let photo = photos[indexPath.row]
-            if cell.imageView.image == nil {
-                cell.configure(with: photo)
-            }
-        }
     }
     
 
     // MARK: UICollectionViewDelegate
 
     // Uncomment this method to specify if the specified item should be highlighted during tracking
+    /*
     override func collectionView(_ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath) -> Bool {
         return true
     }
- 
+    */
 
     /*
     // Uncomment this method to specify if the specified item should be selected
