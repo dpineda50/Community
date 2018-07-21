@@ -1,20 +1,21 @@
 //
-//  DataStore.swift
+//  PhotoStore.swift
 //  CoordinatorTest
 //
-//  Created by Daniel Pineda on 7/18/18.
+//  Created by Daniel Pineda on 7/21/18.
 //  Copyright © 2018 com.danielPineda. All rights reserved.
 //
 
 import Foundation
 import Firebase
 
-final class DataStore {
-    static let shared = DataStore()
+final class PhotoStore {
     
     var photos = [Photo]()
+    // Getting Photos
     
     func getPhotos(at path: String, _ completion: @escaping () -> Void) {
+        guard !path.isEmpty else { return }
         Firestore.firestore().document(path).getDocument { [weak self]
             (snap, error) in
             if let error = error {
@@ -32,16 +33,26 @@ final class DataStore {
     
     func getImages(at path: String, _ completion: @escaping () -> Void) {
         getPhotos(at: path) {
-            for photo in self.photos {
-                let url = URL(string: photo.url.absoluteString)
-                let data = try? Data(contentsOf: url!)
-                
-                if let imageData = data {
-                    let image = UIImage(data: imageData)
-                    photo.image = image
+            DispatchQueue.global().async {
+                for photo in self.photos {
+                    let url = URL(string: photo.url.absoluteString)
+                    let data = try? Data(contentsOf: url!)
+                    
+                    if let imageData = data {
+                        let image = UIImage(data: imageData)
+                        photo.image = image
+                    }
                 }
+                completion()
             }
-            completion()
         }
+    }
+    
+    init() {
+        print("Initializing \(self)")
+    }
+    
+    deinit {
+        print("Deinitializing photoStore \(self)")
     }
 }

@@ -11,13 +11,9 @@ import Firebase
 
 private let reuseIdentifier = "PhotoCell"
 
-extension PhotoCell {
-    
-}
-
 class PhotosCollectionVC: UICollectionViewController{
     
-    let store = DataStore.shared
+    let store = PhotoStore()
     
     lazy var photoCellSize: CGSize = {
         return CGSize(width: view.bounds.width, height: view.bounds.height * 0.2)
@@ -28,39 +24,38 @@ class PhotosCollectionVC: UICollectionViewController{
     var albumPath: String {
         return "albums/\(album.documentID)"
     }
-
+    
+    var albumTitle: String {
+        return album.data()?["name"] as! String
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+    }
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        collectionView?.reloadData()
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.store.getImages(at: self?.albumPath ?? "") {
+                DispatchQueue.main.async {
+                    guard let collectionView = self?.collectionView else { return }
+                    guard self?.view.bounds.contains(collectionView.frame) == true else { return }
+                    collectionView.reloadSections(IndexSet(integer: 0))
+                }
+            }
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         collectionView?.backgroundColor = .purple
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
 
         // Register cell classes
         let photoCellNib = UINib(nibName: "PhotoCell", bundle: Bundle.main)
         self.collectionView!.register(photoCellNib, forCellWithReuseIdentifier: reuseIdentifier)
  
-        title = album.data()?["name"] as? String
-
-        // Do any additional setup after loading the view.
-        
-        store.getImages(at: albumPath) {
-            DispatchQueue.main.async {
-                self.collectionView?.reloadSections(IndexSet(integer: 0))
-            }
-        }
+        title = albumTitle
     }
-    
-    
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using [segue destinationViewController].
-        // Pass the selected object to the new view controller.
-    }
-    */
 
     // MARK: UICollectionViewDataSource
 
@@ -75,7 +70,6 @@ class PhotosCollectionVC: UICollectionViewController{
 
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! PhotoCell
-        
         // load photo model from DataStore
         let photo = store.photos[indexPath.row]
         
@@ -84,43 +78,6 @@ class PhotosCollectionVC: UICollectionViewController{
         
         return cell
     }
-    
-    override func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-        print("willDisplayCell:\(indexPath)")
-    }
-    
-
-    // MARK: UICollectionViewDelegate
-
-    // Uncomment this method to specify if the specified item should be highlighted during tracking
-    /*
-    override func collectionView(_ collectionView: UICollectionView, shouldHighlightItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment this method to specify if the specified item should be selected
-    override func collectionView(_ collectionView: UICollectionView, shouldSelectItemAt indexPath: IndexPath) -> Bool {
-        return true
-    }
-    */
-
-    /*
-    // Uncomment these methods to specify if an action menu should be displayed for the specified item, and react to actions performed on the item
-    override func collectionView(_ collectionView: UICollectionView, shouldShowMenuForItemAt indexPath: IndexPath) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, canPerformAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) -> Bool {
-        return false
-    }
-
-    override func collectionView(_ collectionView: UICollectionView, performAction action: Selector, forItemAt indexPath: IndexPath, withSender sender: Any?) {
-    
-    }
-    */
-
 }
 
 extension PhotosCollectionVC: UICollectionViewDelegateFlowLayout  {

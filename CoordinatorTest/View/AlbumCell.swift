@@ -16,27 +16,15 @@ class AlbumCell: UITableViewCell {
     
     override func awakeFromNib() {
         super.awakeFromNib()
-        // Initialization code
     }
     
 
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
-
     }
     
-    func configure(indexPath: IndexPath) {
-        
-        albumLabel?.text = "\(indexPath.row + 1)"
-        
-        if albumImageView.image == nil {
-            albumImageView?.backgroundColor = .blue
-        }
-    }
-    
-    func configure(with data: Dictionary<String, Any>?) {
-        if let albumTitle = data?["name"] as? String {
-            albumLabel.text = albumTitle
-        }
+    func displayContents(title: String, image: UIImage) {
+        albumLabel.text = title
+        albumImageView.image = image
     }
 }
